@@ -12,8 +12,9 @@ use SNSPush\ARN\ARN;
 use SNSPush\ARN\EndpointARN;
 use SNSPush\ARN\SubscriptionARN;
 use SNSPush\ARN\TopicARN;
+use SNSPush\Exceptions\SNSConfigException;
 use SNSPush\Exceptions\InvalidTypeException;
-use SNSPush\Exceptions\SNSPushException;
+use SNSPush\Exceptions\SNSSendException;
 use SNSPush\Exceptions\UnsupportedPlatformException;
 use SNSPush\Messages\MessageInterface;
 
@@ -55,7 +56,7 @@ class SNSPush
      *
      * @param array $config
      *
-     * @throws \SNSPush\Exceptions\SNSPushException
+     * @throws \SNSPush\Exceptions\SNSSendException
      * @throws \InvalidArgumentException
      */
     public function __construct(array $config = [], AwsClientInterface $client = null)
@@ -77,24 +78,24 @@ class SNSPush
     /**
      * Validate config to ensure required parameters have been supplied.
      *
-     * @throws \SNSPush\Exceptions\SNSPushException
+     * @throws \SNSPush\Exceptions\SNSConfigException
      */
     private function validateConfig()
     {
         if (empty($this->config['account_id'])) {
-            throw new SNSPushException('Please supply your Amazon "account_id" in the config.');
+            throw new SNSConfigException('Please supply your Amazon "account_id" in the config.');
         }
 
         if (empty($this->config['access_key'])) {
-            throw new SNSPushException('Please supply your Amazon API "access_key" in the config.');
+            throw new SNSConfigException('Please supply your Amazon API "access_key" in the config.');
         }
 
         if (empty($this->config['secret_key'])) {
-            throw new SNSPushException('Please supply your Amazon API "secret_key" in the config.');
+            throw new SNSConfigException('Please supply your Amazon API "secret_key" in the config.');
         }
 
         if (empty($this->config['platform_applications'])) {
-            throw new SNSPushException('Please supply your Amazon SNS "platform_applications" in the config.');
+            throw new SNSConfigException('Please supply your Amazon SNS "platform_applications" in the config.');
         }
     }
 
@@ -145,7 +146,7 @@ class SNSPush
      * @return \SNSPush\ARN\EndpointARN
      * @throws \SNSPush\Exceptions\InvalidArnException
      * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSPushException
+     * @throws \SNSPush\Exceptions\SNSSendException
      */
     public function addDevice($token, $platform)
     {
@@ -163,9 +164,9 @@ class SNSPush
 
             return isset($result['EndpointArn']) ? EndpointARN::parse($result['EndpointArn']) : false;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
+            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
-            throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
         }
     }
 
@@ -179,7 +180,7 @@ class SNSPush
      * @return \SNSPush\ARN\SubscriptionARN|bool
      * @throws \SNSPush\Exceptions\InvalidArnException
      * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSPushException
+     * @throws \SNSPush\Exceptions\SNSSendException
      */
     public function subscribeDeviceToTopic($endpointArn, $topicArn, array $options = [])
     {
@@ -200,9 +201,9 @@ class SNSPush
 
             return isset($result['SubscriptionArn']) ? SubscriptionARN::parse($result['SubscriptionArn']) : false;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
+            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
-            throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
         }
     }
 
@@ -214,7 +215,7 @@ class SNSPush
      * @return bool
      * @throws \SNSPush\Exceptions\InvalidArnException
      * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSPushException
+     * @throws \SNSPush\Exceptions\SNSSendException
      */
     public function removeDeviceFromTopic($arn)
     {
@@ -229,9 +230,9 @@ class SNSPush
 
             return true;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
+            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
-            throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
         }
     }
 
@@ -243,7 +244,7 @@ class SNSPush
      * @return bool
      * @throws \SNSPush\Exceptions\InvalidArnException
      * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSPushException
+     * @throws \SNSPush\Exceptions\SNSSendException
      */
     public function removeDevice($arn)
     {
@@ -258,9 +259,9 @@ class SNSPush
 
             return true;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
+            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
-            throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
         }
     }
 
@@ -268,7 +269,7 @@ class SNSPush
      * Gets list of all platform applications (ios, android, etc...).
      *
      * @return \Aws\Result|bool
-     * @throws \SNSPush\Exceptions\SNSPushException
+     * @throws \SNSPush\Exceptions\SNSSendException
      */
     public function getPlatformApplications()
     {
@@ -277,9 +278,9 @@ class SNSPush
 
             return $result ?? false;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
+            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
-            throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
         }
     }
 
@@ -293,7 +294,7 @@ class SNSPush
      * @throws \SNSPush\Exceptions\InvalidArnException
      * @throws \SNSPush\Exceptions\InvalidTypeException
      * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSPushException
+     * @throws \SNSPush\Exceptions\SNSSendException
      */
     public function sendPushNotificationToTopic($arn, $message)
     {
@@ -312,7 +313,7 @@ class SNSPush
      * @throws \SNSPush\Exceptions\InvalidArnException
      * @throws \SNSPush\Exceptions\InvalidTypeException
      * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSPushException
+     * @throws \SNSPush\Exceptions\SNSSendException
      */
     public function sendPushNotificationToEndpoint($arn, $message)
     {
@@ -328,7 +329,7 @@ class SNSPush
      * @param string           $message
      *
      * @return \Aws\Result|bool
-     * @throws \SNSPush\Exceptions\SNSPushException
+     * @throws \SNSPush\Exceptions\SNSSendException
      */
     private function sendPushNotification(ARN $arn, $message)
     {
@@ -350,9 +351,9 @@ class SNSPush
             $result = $this->client->publish($data);
             return $result ?? false;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
+            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
-            throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
         }
     }
 
