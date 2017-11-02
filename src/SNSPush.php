@@ -163,7 +163,7 @@ class SNSPush
 
             return isset($result['EndpointArn']) ? EndpointARN::parse($result['EndpointArn']) : false;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getMessage());
+            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
             throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
         }
@@ -200,7 +200,7 @@ class SNSPush
 
             return isset($result['SubscriptionArn']) ? SubscriptionARN::parse($result['SubscriptionArn']) : false;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getMessage());
+            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
             throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
         }
@@ -229,7 +229,7 @@ class SNSPush
 
             return true;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getMessage());
+            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
             throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
         }
@@ -258,7 +258,7 @@ class SNSPush
 
             return true;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getMessage());
+            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
             throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
         }
@@ -277,7 +277,7 @@ class SNSPush
 
             return $result ?? false;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getMessage());
+            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
             throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
         }
@@ -350,7 +350,7 @@ class SNSPush
             $result = $this->client->publish($data);
             return $result ?? false;
         } catch (SnsException $e) {
-            throw new SNSPushException($e->getMessage());
+            throw new SNSPushException($e->getAwsErrorMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
             throw new SNSPushException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode());
         }
