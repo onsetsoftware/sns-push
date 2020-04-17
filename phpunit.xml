@@ -8,8 +8,7 @@
          convertWarningsToExceptions="true"
          processIsolation="false"
          stopOnFailure="false"
-         stopOnError="true"
-         syntaxCheck="false">
+         stopOnError="true">
     <testsuites>
         <testsuite name="SNS Push Test Suite">
             <directory suffix="Tests.php">./tests</directory>
