@@ -27,7 +27,7 @@ class PushTest extends TestCase
      */
     protected $sns;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $config = [
             'account_id' => '01234567890', // Required
@@ -43,7 +43,7 @@ class PushTest extends TestCase
         $this->sns = new SNSPush($config, $this->client);
     }
 
-    public function tearDown()
+    protected function tearDown(): void
     {
         Mockery::close();
     }

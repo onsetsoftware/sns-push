@@ -24,7 +24,7 @@ class DeviceTest extends TestCase
      */
     protected $sns;
 
-    public function setUp()
+    protected function setUp(): void
     {
         $config = Config::data();
 
@@ -32,7 +32,7 @@ class DeviceTest extends TestCase
         $this->sns = new SNSPush($config, $this->client);
     }
 
-    public function tearDown()
+    protected function tearDown(): void
     {
         Mockery::close();
     }
