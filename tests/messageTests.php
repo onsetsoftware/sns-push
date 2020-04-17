@@ -10,11 +10,11 @@ use SNSPush\Messages\MessageInterface;
  */
 class MessageTest extends TestCase
 {
-    public function setUp()
+    protected function setUp(): void
     {
     }
 
-    public function tearDown()
+    protected function tearDown(): void
     {
         Mockery::close();
     }
