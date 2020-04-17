@@ -4,15 +4,19 @@ use PHPUnit\Framework\TestCase;
 use SNSPush\Messages\Message;
 use SNSPush\Messages\MessageInterface;
 
+/**
+ * @internal
+ * @coversNothing
+ */
 class MessageTest extends TestCase
 {
+    public function setUp()
+    {
+    }
+
     public function tearDown()
     {
         Mockery::close();
-    }
-
-    public function setUp()
-    {
     }
 
     /**
@@ -25,7 +29,6 @@ class MessageTest extends TestCase
         $this->assertEquals($expectedAndroid, $message->getAndroidData());
     }
 
-
     public function messageProvider()
     {
         return [
@@ -36,8 +39,7 @@ class MessageTest extends TestCase
                     ->setBadge(5)
                     ->setIosSound('Diamond.caf')
                     ->setAndroidSound('Diamond')
-                    ->setContentAvailable(1)
-                    ,
+                    ->setContentAvailable(1),
                 [
                     'aps' => [
                         'alert' => [
@@ -47,7 +49,7 @@ class MessageTest extends TestCase
                         'badge' => 5,
                         'sound' => 'Diamond.caf',
                         'content-available' => true,
-                    ]
+                    ],
                 ],
                 [
                     'data' => [
@@ -56,22 +58,21 @@ class MessageTest extends TestCase
                         'badge' => 5,
                         'sound' => 'Diamond',
                         'content-available' => true,
-                    ]
+                    ],
                 ],
             ],
             [
                 (new Message())
                     ->setTitle('Message Title')
                     ->setBody('Message body')
-                    ->setUseAndroidInboxMode()
-                    ,
+                    ->setUseAndroidInboxMode(),
                 [
                     'aps' => [
                         'alert' => [
                             'title' => 'Message Title',
                             'body' => 'Message body',
                         ],
-                    ]
+                    ],
                 ],
                 [
                     'data' => [
@@ -79,7 +80,7 @@ class MessageTest extends TestCase
                         'message' => 'Message body',
                         'style' => 'inbox',
                         'summaryText' => '%n% messages',
-                    ]
+                    ],
                 ],
             ],
             [
@@ -87,15 +88,14 @@ class MessageTest extends TestCase
                     ->setTitle('Message Title')
                     ->setBody('Message body')
                     ->setUseAndroidInboxMode()
-                    ->setAndroidInboxModeGroupMessage('You have %n% messages. Please pay attention.')
-                    ,
+                    ->setAndroidInboxModeGroupMessage('You have %n% messages. Please pay attention.'),
                 [
                     'aps' => [
                         'alert' => [
                             'title' => 'Message Title',
                             'body' => 'Message body',
                         ],
-                    ]
+                    ],
                 ],
                 [
                     'data' => [
@@ -103,43 +103,41 @@ class MessageTest extends TestCase
                         'message' => 'Message body',
                         'style' => 'inbox',
                         'summaryText' => 'You have %n% messages. Please pay attention.',
-                    ]
+                    ],
                 ],
             ],
             [
                 (new Message())
                     ->setBadge(5)
-                    ->setContentAvailable(1)
-                    ,
+                    ->setContentAvailable(1),
                 [
                     'aps' => [
                         'badge' => 5,
                         'content-available' => true,
-                    ]
+                    ],
                 ],
                 [
                     'data' => [
                         'badge' => 5,
                         'content-available' => true,
-                    ]
+                    ],
                 ],
             ],
             [
                 (new Message())
                     ->setBadge(0)
-                    ->setContentAvailable(1)
-                    ,
+                    ->setContentAvailable(1),
                 [
                     'aps' => [
                         'badge' => 0,
                         'content-available' => true,
-                    ]
+                    ],
                 ],
                 [
                     'data' => [
                         'badge' => 0,
                         'content-available' => true,
-                    ]
+                    ],
                 ],
             ],
             [
@@ -147,9 +145,8 @@ class MessageTest extends TestCase
                     ->setBadge(5)
                     ->setContentAvailable(1)
                     ->setPayload([
-                        'additional-data' => 123
-                    ])
-                    ,
+                        'additional-data' => 123,
+                    ]),
                 [
                     'aps' => [
                         'badge' => 5,
@@ -162,7 +159,7 @@ class MessageTest extends TestCase
                         'badge' => 5,
                         'content-available' => true,
                         'additional-data' => 123,
-                    ]
+                    ],
                 ],
             ],
         ];

@@ -2,6 +2,7 @@
 
 namespace SNSPush\ARN;
 
+use InvalidArgumentException;
 use SNSPush\Exceptions\InvalidArnException;
 use SNSPush\Region;
 
@@ -19,8 +20,6 @@ class SubscriptionARN extends ARN
 
     /**
      * Get the endpoint key.
-     *
-     * @return string
      */
     public function getKey(): string
     {
@@ -32,11 +31,12 @@ class SubscriptionARN extends ARN
      *
      * @param $string
      *
+     * @throws InvalidArgumentException
+     * @throws InvalidArnException
+     *
      * @return static
-     * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\InvalidArnException
      */
-    public static function parse($string)
+    public static function parse(string $string)
     {
         $parts = explode(':', $string);
 
@@ -44,12 +44,12 @@ class SubscriptionARN extends ARN
             throw new InvalidArnException('This ARN is invalid. Expects 7 parts.');
         }
 
-        foreach([0 => 'arn', 1 => 'aws', 2 => 'sns'] as $index => $expected) {
+        foreach ([0 => 'arn', 1 => 'aws', 2 => 'sns'] as $index => $expected) {
             if ($parts[$index] !== $expected) {
                 throw new InvalidArnException("Required part of arn ({$expected}) is missing.");
             }
         }
 
-        return new static(Region::parse($parts[3]), $parts[4], $parts[5] . ':' . $parts[6]);
+        return new static(Region::parse($parts[3]), $parts[4], $parts[5].':'.$parts[6]);
     }
 }

@@ -3,17 +3,11 @@
 namespace SNSPush\Exceptions;
 
 use Aws\ResultInterface;
-use Aws\Sns\Exception\SnsException;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 class SNSSendException extends SNSPushException
 {
-    public function __construct(string $message, int $code = 0, SnsException $e = null)
-    {
-        parent::__construct($message, $code, $e);
-    }
-
     /**
      * Get the sent HTTP request if any.
      *
@@ -47,7 +41,7 @@ class SNSSendException extends SNSPushException
     }
 
     /**
-     * Get the result of the exception if available
+     * Get the result of the exception if available.
      *
      * @return ResultInterface|null
      */
@@ -58,10 +52,8 @@ class SNSSendException extends SNSPushException
 
     /**
      * Returns true if this is a connection error.
-     *
-     * @return bool
      */
-    public function isConnectionError()
+    public function isConnectionError(): bool
     {
         return $this->getPrevious()->isConnectionError();
     }
@@ -87,7 +79,7 @@ class SNSSendException extends SNSPushException
     }
 
     /**
-     * If available, gets the HTTP status code of the corresponding response
+     * If available, gets the HTTP status code of the corresponding response.
      *
      * @return int|null
      */

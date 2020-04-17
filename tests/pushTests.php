@@ -3,13 +3,20 @@
 use Aws\Result;
 use Aws\Sns\SnsClient;
 use PHPUnit\Framework\TestCase;
-use SNSPush\SNSPush;
+use SNSPush\Exceptions\InvalidArnException;
+use SNSPush\Exceptions\InvalidTypeException;
+use SNSPush\Exceptions\SNSSendException;
+use SNSPush\Exceptions\UnsupportedPlatformException;
 use SNSPush\Messages\Message;
 use SNSPush\Messages\MessageInterface;
+use SNSPush\SNSPush;
 
+/**
+ * @internal
+ * @coversNothing
+ */
 class PushTest extends TestCase
 {
-
     /**
      * @var SnsClient;
      */
@@ -20,33 +27,38 @@ class PushTest extends TestCase
      */
     protected $sns;
 
-    public function tearDown()
-    {
-        Mockery::close();
-    }
-
     public function setUp()
     {
         $config = [
-                    'account_id' => '01234567890', // Required
-                    'access_key' => 'ACCESSKEY', // Required
-                    'secret_key' => 'SECRET_KEY', // Required
-                    'platform_applications' => [ // Required
-                        'ios' => 'arn:aws:sns:eu-west-1:01234567890:app/APNS/application-ios',
-                        'android' => 'arn:aws:sns:eu-west-1:01234567890:app/GCM/application-android',
-                    ],
-                ];
+            'account_id' => '01234567890', // Required
+            'access_key' => 'ACCESS_KEY', // Required
+            'secret_key' => 'SECRET_KEY', // Required
+            'platform_applications' => [ // Required
+                'ios' => 'arn:aws:sns:eu-west-1:01234567890:app/APNS/application-ios',
+                'android' => 'arn:aws:sns:eu-west-1:01234567890:app/GCM/application-android',
+            ],
+        ];
 
         $this->client = Mockery::mock(SnsClient::class);
         $this->sns = new SNSPush($config, $this->client);
     }
 
+    public function tearDown()
+    {
+        Mockery::close();
+    }
+
     /**
      * @dataProvider messageProvider
+     *
+     * @throws InvalidArnException
+     * @throws InvalidTypeException
+     * @throws SNSSendException
+     * @throws UnsupportedPlatformException
      */
     public function testSendMessageToEndpoint(MessageInterface $message, string $endpoint, array $expectedPayload)
     {
-        $messageId = "c03c7f56-c583-55f4-b521-2d24537a3337";
+        $messageId = 'c03c7f56-c583-55f4-b521-2d24537a3337';
         $this->client->expects()->publish($expectedPayload)->andReturns(new Result(['MessageId' => $messageId]));
 
         $result = $this->sns->sendPushNotificationToEndpoint($endpoint, $message);
@@ -59,14 +71,13 @@ class PushTest extends TestCase
      */
     public function testSendMessageToTopic(MessageInterface $message, string $endpoint, array $expectedPayload)
     {
-        $messageId = "c03c7f56-c583-55f4-b521-2d24537a4437";
+        $messageId = 'c03c7f56-c583-55f4-b521-2d24537a4437';
         $this->client->expects()->publish($expectedPayload)->andReturns(new Result(['MessageId' => $messageId]));
 
         $result = $this->sns->sendPushNotificationToTopic($endpoint, $message);
 
         $this->assertEquals($messageId, $result->get('MessageId'));
     }
-
 
     public function messageProvider()
     {
@@ -77,9 +88,9 @@ class PushTest extends TestCase
                 $this->getMessage(),
                 $iosEndpoint,
                 [
-                      'TargetArn' => $iosEndpoint,
-                      'Message' => '{"default":"Message body","APNS":"{\"aps\":{\"alert\":{\"title\":\"Message Title\",\"body\":\"Message body\"},\"sound\":\"Sound.caf\",\"badge\":5}}","GCM":"{\"data\":{\"title\":\"Message Title\",\"message\":\"Message body\",\"sound\":\"Sound\",\"badge\":5}}"}',
-                      'MessageStructure' => 'json',
+                    'TargetArn' => $iosEndpoint,
+                    'Message' => '{"default":"Message body","APNS":"{\"aps\":{\"alert\":{\"title\":\"Message Title\",\"body\":\"Message body\"},\"sound\":\"Sound.caf\",\"badge\":5}}","GCM":"{\"data\":{\"title\":\"Message Title\",\"message\":\"Message body\",\"sound\":\"Sound\",\"badge\":5}}"}',
+                    'MessageStructure' => 'json',
                 ],
             ],
         ];
@@ -94,9 +105,9 @@ class PushTest extends TestCase
                 $this->getMessage(),
                 $topicEndpoint,
                 [
-                      'TopicArn' => $topicEndpoint,
-                      'Message' => '{"default":"Message body","APNS":"{\"aps\":{\"alert\":{\"title\":\"Message Title\",\"body\":\"Message body\"},\"sound\":\"Sound.caf\",\"badge\":5}}","GCM":"{\"data\":{\"title\":\"Message Title\",\"message\":\"Message body\",\"sound\":\"Sound\",\"badge\":5}}"}',
-                      'MessageStructure' => 'json',
+                    'TopicArn' => $topicEndpoint,
+                    'Message' => '{"default":"Message body","APNS":"{\"aps\":{\"alert\":{\"title\":\"Message Title\",\"body\":\"Message body\"},\"sound\":\"Sound.caf\",\"badge\":5}}","GCM":"{\"data\":{\"title\":\"Message Title\",\"message\":\"Message body\",\"sound\":\"Sound\",\"badge\":5}}"}',
+                    'MessageStructure' => 'json',
                 ],
             ],
         ];
@@ -109,6 +120,7 @@ class PushTest extends TestCase
             ->setBody('Message body')
             ->setBadge(5)
             ->setIosSound('Sound.caf')
-            ->setAndroidSound('Sound');
+            ->setAndroidSound('Sound')
+        ;
     }
 }

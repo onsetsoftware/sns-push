@@ -16,8 +16,6 @@ class TopicARN extends ARN
 
     /**
      * Get the endpoint key.
-     *
-     * @return string
      */
     public function getKey(): string
     {

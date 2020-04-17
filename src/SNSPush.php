@@ -2,31 +2,36 @@
 
 namespace SNSPush;
 
-use Aws\AwsClientInterface;
 use Aws\ApiGateway\Exception\ApiGatewayException;
+use Aws\AwsClientInterface;
 use Aws\Credentials\Credentials;
+use Aws\Result;
 use Aws\Sns\Exception\SnsException;
 use Aws\Sns\SnsClient;
+use InvalidArgumentException;
 use SNSPush\ARN\ApplicationARN;
 use SNSPush\ARN\ARN;
 use SNSPush\ARN\EndpointARN;
 use SNSPush\ARN\SubscriptionARN;
 use SNSPush\ARN\TopicARN;
-use SNSPush\Exceptions\SNSConfigException;
+use SNSPush\Exceptions\InvalidArnException;
 use SNSPush\Exceptions\InvalidTypeException;
+use SNSPush\Exceptions\SNSConfigException;
 use SNSPush\Exceptions\SNSSendException;
 use SNSPush\Exceptions\UnsupportedPlatformException;
+use SNSPush\Messages\Message;
 use SNSPush\Messages\MessageInterface;
+use function json_encode;
 
 class SNSPush
 {
     /**
      * Supported target types.
      */
-    const TYPE_ENDPOINT = 1;
-    const TYPE_TOPIC = 2;
-    const TYPE_APPLICATION = 3;
-    const TYPE_SUBSCRIPTION = 4;
+    public const TYPE_ENDPOINT = 1;
+    public const TYPE_TOPIC = 2;
+    public const TYPE_APPLICATION = 3;
+    public const TYPE_SUBSCRIPTION = 4;
 
     /**
      * List of endpoint targets supported by this package.
@@ -34,13 +39,13 @@ class SNSPush
      * @var array
      */
     protected static $types = [
-        self::TYPE_ENDPOINT, self::TYPE_TOPIC, self::TYPE_APPLICATION, self::TYPE_SUBSCRIPTION
+        self::TYPE_ENDPOINT, self::TYPE_TOPIC, self::TYPE_APPLICATION, self::TYPE_SUBSCRIPTION,
     ];
 
     /**
      * The AWS SNS Client.
      *
-     * @var \Aws\Sns\SnsClient
+     * @var SnsClient
      */
     protected $client;
 
@@ -54,18 +59,17 @@ class SNSPush
     /**
      * SNSPush constructor.
      *
-     * @param array $config
+     * @param string[] $config
      *
-     * @throws \SNSPush\Exceptions\SNSSendException
-     * @throws \InvalidArgumentException
+     * @throws SNSConfigException
      */
-    public function __construct(array $config = [], AwsClientInterface $client = null)
+    public function __construct(array $config = [], ?AwsClientInterface $client = null)
     {
         // Set configuration data.
         $this->config = array_merge([
-            'region'        => 'eu-west-1',
-            'api_version'   => '2010-03-31',
-            'scheme'        => 'https'
+            'region' => 'eu-west-1',
+            'api_version' => '2010-03-31',
+            'scheme' => 'https',
         ], $config);
 
         // Validate config.
@@ -76,11 +80,231 @@ class SNSPush
     }
 
     /**
+     * Adds a device to an application endpoint in AWS SNS.
+     *
+     * @throws InvalidArnException
+     * @throws InvalidArgumentException
+     * @throws SNSSendException
+     *
+     * @return EndpointARN
+     */
+    public function addDevice(string $token, string $platform): ?EndpointARN
+    {
+        $arn = $this->config['platform_applications'][$platform];
+
+        if (is_string($arn)) {
+            $arn = ApplicationARN::parse($arn);
+        }
+
+        try {
+            $result = $this->client->createPlatformEndpoint([
+                $arn->getKey() => $arn->toString(),
+                'Token' => $token,
+            ]);
+
+            return isset($result['EndpointArn']) ? EndpointARN::parse($result['EndpointArn']) : null;
+        } catch (SnsException $e) {
+            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
+        } catch (ApiGatewayException $e) {
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: '.$e->getCode(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Subscribe a device endpoint to an ARN (topic subscription).
+     *
+     * @param ARN|EndpointARN|string $endpointArn
+     * @param ARN|string|TopicARN    $topicArn
+     *
+     * @throws InvalidArnException
+     * @throws InvalidArgumentException
+     * @throws SNSSendException
+     */
+    public function subscribeDeviceToTopic($endpointArn, $topicArn, array $options = []): ?SubscriptionARN
+    {
+        if (is_string($topicArn)) {
+            $topicArn = TopicARN::parse($topicArn);
+        }
+
+        if (is_string($endpointArn)) {
+            $endpointArn = EndpointARN::parse($endpointArn);
+        }
+
+        try {
+            $result = $this->client->subscribe([
+                'Endpoint' => $endpointArn->toString(),
+                'Protocol' => $options['protocol'] ?? 'application',
+                $topicArn->getKey() => $topicArn->toString(),
+            ]);
+
+            return isset($result['SubscriptionArn']) ? SubscriptionARN::parse($result['SubscriptionArn']) : null;
+        } catch (SnsException $e) {
+            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
+        } catch (ApiGatewayException $e) {
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: '.$e->getCode(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Remove a device endpoint from an ARN (unsubscribe topic).
+     *
+     * @param string|SubscriptionARN $arn
+     *
+     * @throws InvalidArnException
+     * @throws SNSSendException
+     */
+    public function removeDeviceFromTopic($arn): void
+    {
+        if (is_string($arn)) {
+            $arn = SubscriptionARN::parse($arn);
+        }
+
+        try {
+            $this->client->unsubscribe([
+                $arn->getKey() => $arn->toString(),
+            ]);
+        } catch (SnsException $e) {
+            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
+        } catch (ApiGatewayException $e) {
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: '.$e->getCode(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Removes a device to an application endpoint in AWS SNS.
+     *
+     * @param ARN|EndpointARN|string $arn
+     *
+     * @throws InvalidArnException
+     * @throws SNSSendException
+     */
+    public function removeDevice($arn): void
+    {
+        if (!$arn instanceof EndpointARN) {
+            $arn = EndpointARN::parse($arn);
+        }
+
+        try {
+            $this->client->deleteEndpoint([
+                $arn->getRemoveDeviceKey() => $arn->toString(),
+            ]);
+        } catch (SnsException $e) {
+            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
+        } catch (ApiGatewayException $e) {
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: '.$e->getCode(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Gets list of all platform applications (ios, android, etc...).
+     *
+     * @throws SNSSendException
+     *
+     * @return Result
+     */
+    public function getPlatformApplications(): ?Result
+    {
+        try {
+            return $this->client->listPlatformApplications();
+        } catch (SnsException $e) {
+            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
+        } catch (ApiGatewayException $e) {
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: '.$e->getCode(), $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Send push notification to a topic endpoint.
+     *
+     * @param ARN|string|TopicARN $arn
+     * @param mixed               $message
+     *
+     * @throws InvalidArnException
+     * @throws InvalidTypeException
+     * @throws SNSSendException
+     * @throws UnsupportedPlatformException
+     *
+     * @return bool|Result
+     */
+    public function sendPushNotificationToTopic($arn, MessageInterface $message)
+    {
+        $arn = $arn instanceof TopicARN ? $arn : TopicARN::parse($arn);
+
+        return $this->sendPushNotification($arn, $message);
+    }
+
+    /**
+     * Send push notification to a device endpoint.
+     *
+     * @param ARN|EndpointARN|string $arn
+     * @param mixed                  $message
+     *
+     * @throws InvalidArnException
+     * @throws InvalidTypeException
+     * @throws SNSSendException
+     * @throws UnsupportedPlatformException
+     *
+     * @return bool|Result
+     */
+    public function sendPushNotificationToEndpoint($arn, MessageInterface $message)
+    {
+        $arn = $arn instanceof EndpointARN ? $arn : EndpointARN::parse($arn);
+
+        return $this->sendPushNotification($arn, $message);
+    }
+
+    /**
+     * Format push message as json in required format for various platforms.
+     *
+     * @throws UnsupportedPlatformException
+     */
+    public function formatPushMessageAsJson(MessageInterface $message): string
+    {
+        $platformApplications = $this->config['platform_applications'];
+
+        // Remove the application name from the platform endpoint.
+        array_walk($platformApplications, static function (&$value) {
+            $arn = ApplicationARN::parse($value);
+            [$app, $platform] = explode('/', $arn->getTarget());
+
+            $value = $platform;
+        });
+
+        // Default message format.
+        $messageArray = [
+            'default' => $message->getBody(),
+        ];
+
+        // Loop through provided platforms to build the push message in the correct format.
+        foreach ((array) $platformApplications as $key => $value) {
+            $method = 'get'.ucfirst(mb_strtolower($key)).'Data';
+
+            if (!method_exists($message, $method)) {
+                throw new UnsupportedPlatformException('This platform is not supported.');
+            }
+
+            $messageArray[$value] = json_encode($message->{$method}());
+        }
+
+        return json_encode($messageArray);
+    }
+
+    /**
+     * Check if provided endpoint type is supported and valid.
+     *
+     * @param int $type
+     */
+    protected static function isValidType($type): bool
+    {
+        return in_array($type, self::$types, true);
+    }
+
+    /**
      * Validate config to ensure required parameters have been supplied.
      *
-     * @throws \SNSPush\Exceptions\SNSConfigException
+     * @throws SNSConfigException
      */
-    private function validateConfig()
+    private function validateConfig(): void
     {
         if (empty($this->config['account_id'])) {
             throw new SNSConfigException('Please supply your Amazon "account_id" in the config.');
@@ -102,23 +326,20 @@ class SNSPush
     /**
      * Initialize the AWS SNS Client.
      *
-     * @return \Aws\Sns\SnsClient
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     private function createClient(): SnsClient
     {
         return new SnsClient([
-            'region'        => $this->config['region'],
-            'version'       => $this->config['api_version'],
-            'scheme'        => $this->config['scheme'],
-            'credentials'   => $this->getCredentials()
+            'region' => $this->config['region'],
+            'version' => $this->config['api_version'],
+            'scheme' => $this->config['scheme'],
+            'credentials' => $this->getCredentials(),
         ]);
     }
 
     /**
      * Get an instance of the Credentials.
-     *
-     * @return \Aws\Credentials\Credentials
      */
     private function getCredentials(): Credentials
     {
@@ -126,212 +347,15 @@ class SNSPush
     }
 
     /**
-     * Check if provided endpoint type is supported and valid.
-     *
-     * @param int $type
-     *
-     * @return bool
-     */
-    protected static function isValidType($type): bool
-    {
-        return in_array($type, self::$types, true);
-    }
-
-    /**
-     * Adds a device to an application endpoint in AWS SNS.
-     *
-     * @param string $token
-     * @param string $platform
-     *
-     * @return \SNSPush\ARN\EndpointARN
-     * @throws \SNSPush\Exceptions\InvalidArnException
-     * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSSendException
-     */
-    public function addDevice($token, $platform)
-    {
-        $applicationArn = $this->config['platform_applications'][$platform];
-
-        if (!$applicationArn instanceof ApplicationARN) {
-            $arn = ApplicationARN::parse($applicationArn);
-        }
-
-        try {
-            $result = $this->client->createPlatformEndpoint([
-                $arn->getKey() => $arn->toString(),
-                'Token' => $token
-            ]);
-
-            return isset($result['EndpointArn']) ? EndpointARN::parse($result['EndpointArn']) : false;
-        } catch (SnsException $e) {
-            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
-        } catch (ApiGatewayException $e) {
-            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
-        }
-    }
-
-    /**
-     * Subscribe a device endpoint to an ARN (topic subscription).
-     *
-     * @param \SNSPush\ARN\EndpointARN|string $endpointArn
-     * @param \SNSPush\ARN\TopicARN|string    $topicArn
-     * @param array                           $options
-     *
-     * @return \SNSPush\ARN\SubscriptionARN|bool
-     * @throws \SNSPush\Exceptions\InvalidArnException
-     * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSSendException
-     */
-    public function subscribeDeviceToTopic($endpointArn, $topicArn, array $options = [])
-    {
-        if (!$topicArn instanceof TopicARN) {
-            $topicArn = TopicARN::parse($topicArn);
-        }
-
-        if (!$endpointArn instanceof EndpointARN) {
-            $endpointArn = EndpointARN::parse($endpointArn);
-        }
-
-        try {
-            $result = $this->client->subscribe([
-                'Endpoint' => $endpointArn->toString(),
-                'Protocol' => $options['protocol'] ?? 'application',
-                $topicArn->getKey() => $topicArn->toString()
-            ]);
-
-            return isset($result['SubscriptionArn']) ? SubscriptionARN::parse($result['SubscriptionArn']) : false;
-        } catch (SnsException $e) {
-            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
-        } catch (ApiGatewayException $e) {
-            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
-        }
-    }
-
-    /**
-     * Remove a device endpoint from an ARN (unsubscribe topic).
-     *
-     * @param \SNSPush\ARN\SubscriptionARN|string $arn
-     *
-     * @return bool
-     * @throws \SNSPush\Exceptions\InvalidArnException
-     * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSSendException
-     */
-    public function removeDeviceFromTopic($arn)
-    {
-        if (!$arn instanceof SubscriptionARN) {
-            $arn = SubscriptionARN::parse($arn);
-        }
-
-        try {
-            $this->client->unsubscribe([
-                $arn->getKey() => $arn->toString()
-            ]);
-
-            return true;
-        } catch (SnsException $e) {
-            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
-        } catch (ApiGatewayException $e) {
-            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
-        }
-    }
-
-    /**
-     * Removes a device to an application endpoint in AWS SNS.
-     *
-     * @param \SNSPush\ARN\EndpointARN|string $arn
-     *
-     * @return bool
-     * @throws \SNSPush\Exceptions\InvalidArnException
-     * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSSendException
-     */
-    public function removeDevice($arn)
-    {
-        if (!$arn instanceof EndpointARN) {
-            $arn = EndpointARN::parse($arn);
-        }
-
-        try {
-            $this->client->deleteEndpoint([
-                $arn->getRemoveDeviceKey() => $arn->toString()
-            ]);
-
-            return true;
-        } catch (SnsException $e) {
-            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
-        } catch (ApiGatewayException $e) {
-            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
-        }
-    }
-
-    /**
-     * Gets list of all platform applications (ios, android, etc...).
-     *
-     * @return \Aws\Result|bool
-     * @throws \SNSPush\Exceptions\SNSSendException
-     */
-    public function getPlatformApplications()
-    {
-        try {
-            $result = $this->client->listPlatformApplications();
-
-            return $result ?? false;
-        } catch (SnsException $e) {
-            throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
-        } catch (ApiGatewayException $e) {
-            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
-        }
-    }
-
-    /**
-     * Send push notification to a topic endpoint.
-     *
-     * @param \SNSPush\ARN\TopicARN|string $arn
-     * @param string                       $message
-     *
-     * @return \Aws\Result|bool
-     * @throws \SNSPush\Exceptions\InvalidArnException
-     * @throws \SNSPush\Exceptions\InvalidTypeException
-     * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSSendException
-     */
-    public function sendPushNotificationToTopic($arn, $message)
-    {
-        $arn = $arn instanceof TopicARN ? $arn : TopicARN::parse($arn);
-
-        return $this->sendPushNotification($arn, $message);
-    }
-
-    /**
-     * Send push notification to a device endpoint.
-     *
-     * @param \SNSPush\ARN\EndpointARN $arn
-     * @param string                   $message
-     *
-     * @return \Aws\Result|bool
-     * @throws \SNSPush\Exceptions\InvalidArnException
-     * @throws \SNSPush\Exceptions\InvalidTypeException
-     * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\SNSSendException
-     */
-    public function sendPushNotificationToEndpoint($arn, $message)
-    {
-        $arn = $arn instanceof EndpointARN ? $arn : EndpointARN::parse($arn);
-
-        return $this->sendPushNotification($arn, $message);
-    }
-
-    /**
      * Send the push notification.
      *
-     * @param \SNSPush\ARN\ARN $arn
-     * @param string           $message
+     * @throws InvalidTypeException
+     * @throws SNSSendException
+     * @throws UnsupportedPlatformException
      *
-     * @return \Aws\Result|bool
-     * @throws \SNSPush\Exceptions\SNSSendException
+     * @return bool|Result
      */
-    private function sendPushNotification(ARN $arn, $message)
+    private function sendPushNotification(ARN $arn, MessageInterface $message)
     {
         if (!$arn instanceof EndpointARN && !$arn instanceof TopicARN) {
             throw new InvalidTypeException('You can only send push notifications to a Topic Arn or an Endpoint Arn');
@@ -349,51 +373,12 @@ class SNSPush
 
         try {
             $result = $this->client->publish($data);
+
             return $result ?? false;
         } catch (SnsException $e) {
             throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
-            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: ' . $e->getCode(), $e->getCode(), $e);
+            throw new SNSSendException('There was an unknown problem with the AWS SNS API. Code: '.$e->getCode(), $e->getCode(), $e);
         }
-    }
-
-    /**
-     * Format push message as json in required format for various platforms.
-     *
-     * @param MessageInterface $message
-     *
-     * @return string
-     * @throws \SNSPush\Exceptions\InvalidArnException
-     * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\UnsupportedPlatformException
-     */
-    public function formatPushMessageAsJson(MessageInterface $message): string
-    {
-        $platformApplications = $this->config['platform_applications'];
-
-        // Remove the application name from the platform endpoint.
-        array_walk($platformApplications, function (&$value) {
-            $arn = ApplicationARN::parse($value);
-            list($app, $platform) = explode('/', $arn->getTarget());
-
-            $value = $platform;
-        });
-
-        // Default message format.
-        $messageArray = [
-            'default' => $message->getBody()
-        ];
-
-        // Loop through provided platforms to build the push message in the correct format.
-        foreach ((array) $platformApplications as $key => $value) {
-            $method = 'get' . ucfirst(mb_strtolower($key)) . 'Data';
-
-            if (!method_exists($message, $method)) {
-                throw new UnsupportedPlatformException('This platform is not supported.');
-            }
-
-            $messageArray[$value] = json_encode($message->$method());
-        }
-        return json_encode($messageArray);
     }
 }
