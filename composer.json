@@ -1,6 +1,6 @@
 {
-    "name": "redu/sns-push",
-    "type": "project",
+    "name": "acurrieclark/sns-push",
+    "type": "library",
     "description": "API Wrapper for Amazon SNS PHP SDK",
     "keywords": [
         "amazon",
@@ -34,7 +34,7 @@
         }
     ],
     "require": {
-        "php": ">=7.1",
+        "php": ">=7.2",
         "aws/aws-sdk-php": "^3.36",
         "aws/aws-php-sns-message-validator": "^1.4",
         "ext-ctype": "*",
