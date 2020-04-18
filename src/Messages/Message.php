@@ -5,7 +5,7 @@ namespace SNSPush\Messages;
 /**
  * message class for constructing SNS message data.
  */
-class Message implements MessageInterface
+abstract class Message implements MessageInterface
 {
     /**
      * the message title.
@@ -29,41 +29,11 @@ class Message implements MessageInterface
     protected $count;
 
     /**
-     * the iOS notification sound.
+     * the notification sound.
      *
      * @var string|null
      */
-    protected $iosSound;
-
-    /**
-     * the android notification sound.
-     *
-     * @var string|null
-     */
-    protected $androidSound;
-
-    /**
-     * whether the notification should be silent or not.
-     *
-     * @var bool|null
-     */
-    protected $contentAvailable;
-
-    /**
-     * use android inbox mode.
-     *
-     * @var bool
-     */
-    protected $useAndroidInboxMode = false;
-
-    /**
-     * the android inbox mode group message.
-     *
-     * substitute %n% for the number of notifications
-     *
-     * @var string|null
-     */
-    protected $androidInboxModeGroupMessage = '%n% messages';
+    protected $sound;
 
     /**
      * other payload data to be added to the message.
@@ -72,8 +42,16 @@ class Message implements MessageInterface
      */
     protected $payload;
 
-    public function __construct()
+    /**
+     * whether the notification should be silent or not.
+     *
+     * @var bool|null
+     */
+    protected $contentAvailable;
+
+    public function platformKey(): string
     {
+        return $this->platformKey;
     }
 
     public function getTitle(): string
@@ -106,10 +84,7 @@ class Message implements MessageInterface
         return $this;
     }
 
-    /**
-     * @return int|null
-     */
-    public function getCount()
+    public function getCount(): ?int
     {
         return $this->count;
     }
@@ -124,55 +99,17 @@ class Message implements MessageInterface
         return $this;
     }
 
-    public function getAndroidSound(): string
+    public function getSound(): string
     {
-        return $this->androidSound ?? '';
+        return $this->sound ?? '';
     }
 
     /**
      * @return static
      */
-    public function setAndroidSound(string $androidSound)
+    public function setSound(string $sound)
     {
-        $this->androidSound = $androidSound;
-
-        return $this;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getIosSound(): string
-    {
-        return $this->iosSound ?? '';
-    }
-
-    /**
-     * @param string $iosSsound
-     *
-     * @return static
-     */
-    public function setIosSound(string $iosSound)
-    {
-        $this->iosSound = $iosSound;
-
-        return $this;
-    }
-
-    /**
-     * @return bool|null
-     */
-    public function getContentAvailable()
-    {
-        return $this->contentAvailable;
-    }
-
-    /**
-     * @return static
-     */
-    public function setContentAvailable(bool $contentAvailable)
-    {
-        $this->contentAvailable = $contentAvailable;
+        $this->sound = $sound;
 
         return $this;
     }
@@ -183,6 +120,8 @@ class Message implements MessageInterface
     }
 
     /**
+     * @param mixed[] $payload
+     *
      * @return static
      */
     public function setPayload(array $payload)
@@ -192,85 +131,29 @@ class Message implements MessageInterface
         return $this;
     }
 
-    public function getUseAndroidInboxMode(): bool
+    public function getContentAvailable(): ?bool
     {
-        return $this->useAndroidInboxMode ?? false;
+        return $this->contentAvailable;
     }
 
     /**
      * @return static
      */
-    public function setUseAndroidInboxMode(bool $useAndroidInboxMode = true)
+    public function setContentAvailable(bool $contentAvailable = true)
     {
-        $this->useAndroidInboxMode = $useAndroidInboxMode;
+        $this->contentAvailable = $contentAvailable;
 
         return $this;
     }
 
-    /**
-     * @return string|null
-     */
-    public function getAndroidInboxModeGroupMessage(): string
+    public function getFormattedData(): array
     {
-        return $this->androidInboxModeGroupMessage;
+        return [
+            $this->platformKey => json_encode($this->getData()),
+        ];
     }
 
-    /**
-     * @param string|null $androidInboxModeGroupMessage
-     *
-     * @return static
-     */
-    public function setAndroidInboxModeGroupMessage(string $androidInboxModeGroupMessage)
-    {
-        $this->androidInboxModeGroupMessage = $androidInboxModeGroupMessage;
-
-        return $this;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getIosData(): array
-    {
-        return $this->filterBlank(
-            array_merge([
-                'aps' => [
-                    'alert' => [
-                        'title' => $this->getTitle(),
-                        'body' => $this->getBody(),
-                    ],
-                    'sound' => $this->getIosSound(),
-                    'badge' => $this->getCount(),
-                    'content-available' => $this->getContentAvailable(),
-                ],
-            ], $this->getPayload())
-        );
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function getAndroidData(): array
-    {
-        return $this->filterBlank(
-            [
-                'data' => array_merge(
-                    [
-                        'title' => $this->getTitle(),
-                        'message' => $this->getBody(),
-                        'sound' => $this->getAndroidSound(),
-                        'badge' => $this->getCount(),
-                        'content-available' => $this->getContentAvailable(),
-                    ],
-                    $this->getPayload(),
-                    $this->getUseAndroidInboxMode() ? [
-                        'style' => 'inbox',
-                        'summaryText' => $this->getAndroidInboxModeGroupMessage(),
-                    ] : []
-                ),
-            ]
-        );
-    }
+    abstract public function getData(): array;
 
     /**
      * recursively removes blank values from an array
@@ -280,7 +163,7 @@ class Message implements MessageInterface
      *
      * @return array the array minus any blank values
      */
-    public function filterBlank(array $arr): array
+    protected function filterBlank(array $arr): array
     {
         foreach ($arr as $key => $value) {
             if (is_array($value)) {
@@ -288,8 +171,8 @@ class Message implements MessageInterface
             }
         }
 
-        return array_filter($arr, function ($var) {
-            return !(is_null($var) || $var === '' || (is_array($var) && empty($var)));
+        return array_filter($arr, static function ($var) {
+            return !($var === null || $var === '' || (is_array($var) && empty($var)));
         });
     }
 }

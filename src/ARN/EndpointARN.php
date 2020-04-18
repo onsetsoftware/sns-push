@@ -9,7 +9,7 @@ class EndpointARN extends ARN
      *
      * @param mixed $target
      */
-    public function setTarget($target)
+    public function setTarget($target): void
     {
         $this->target = $target;
     }

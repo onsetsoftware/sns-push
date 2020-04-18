@@ -36,7 +36,7 @@ class SubscriptionARN extends ARN
      *
      * @return static
      */
-    public static function parse(string $string)
+    public static function parse(string $string): SubscriptionARN
     {
         $parts = explode(':', $string);
 

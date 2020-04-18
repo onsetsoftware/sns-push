@@ -16,12 +16,15 @@ use SNSPush\ARN\SubscriptionARN;
 use SNSPush\ARN\TopicARN;
 use SNSPush\Exceptions\InvalidArnException;
 use SNSPush\Exceptions\InvalidTypeException;
+use SNSPush\Exceptions\MismatchedPlatformException;
 use SNSPush\Exceptions\SNSConfigException;
 use SNSPush\Exceptions\SNSSendException;
-use SNSPush\Exceptions\UnsupportedPlatformException;
-use SNSPush\Messages\Message;
+use SNSPush\Messages\IOsMessage;
 use SNSPush\Messages\MessageInterface;
+use SNSPush\Messages\TopicMessage;
+use function explode;
 use function json_encode;
+use function strpos;
 
 class SNSPush
 {
@@ -217,16 +220,15 @@ class SNSPush
      * Send push notification to a topic endpoint.
      *
      * @param ARN|string|TopicARN $arn
-     * @param mixed               $message
+     * @param MessageInterface[]  $messages
      *
      * @throws InvalidArnException
      * @throws InvalidTypeException
      * @throws SNSSendException
-     * @throws UnsupportedPlatformException
      *
      * @return bool|Result
      */
-    public function sendPushNotificationToTopic($arn, MessageInterface $message)
+    public function sendPushNotificationToTopic($arn, TopicMessage $message)
     {
         $arn = $arn instanceof TopicARN ? $arn : TopicARN::parse($arn);
 
@@ -242,7 +244,6 @@ class SNSPush
      * @throws InvalidArnException
      * @throws InvalidTypeException
      * @throws SNSSendException
-     * @throws UnsupportedPlatformException
      *
      * @return bool|Result
      */
@@ -251,42 +252,6 @@ class SNSPush
         $arn = $arn instanceof EndpointARN ? $arn : EndpointARN::parse($arn);
 
         return $this->sendPushNotification($arn, $message);
-    }
-
-    /**
-     * Format push message as json in required format for various platforms.
-     *
-     * @throws UnsupportedPlatformException
-     */
-    public function formatPushMessageAsJson(MessageInterface $message): string
-    {
-        $platformApplications = $this->config['platform_applications'];
-
-        // Remove the application name from the platform endpoint.
-        array_walk($platformApplications, static function (&$value) {
-            $arn = ApplicationARN::parse($value);
-            [$app, $platform] = explode('/', $arn->getTarget());
-
-            $value = $platform;
-        });
-
-        // Default message format.
-        $messageArray = [
-            'default' => $message->getBody(),
-        ];
-
-        // Loop through provided platforms to build the push message in the correct format.
-        foreach ((array) $platformApplications as $key => $value) {
-            $method = 'get'.ucfirst(mb_strtolower($key)).'Data';
-
-            if (!method_exists($message, $method)) {
-                throw new UnsupportedPlatformException('This platform is not supported.');
-            }
-
-            $messageArray[$value] = json_encode($message->{$method}());
-        }
-
-        return json_encode($messageArray);
     }
 
     /**
@@ -349,27 +314,28 @@ class SNSPush
     /**
      * Send the push notification.
      *
-     * @throws InvalidTypeException
+     * @throws MismatchedPlatformException
      * @throws SNSSendException
-     * @throws UnsupportedPlatformException
      *
      * @return bool|Result
      */
     private function sendPushNotification(ARN $arn, MessageInterface $message)
     {
-        if (!$arn instanceof EndpointARN && !$arn instanceof TopicARN) {
-            throw new InvalidTypeException('You can only send push notifications to a Topic Arn or an Endpoint Arn');
+        if ($arn instanceof EndpointARN) {
+            $platform = explode('/', $arn->getTarget())[1];
+
+            if (strpos($platform, $message->platformKey()) === false) {
+                throw new MismatchedPlatformException('The endpoint platform does not match the message provided');
+            }
+            if ($message instanceof IOsMessage && strpos($platform, 'SANDBOX') !== false) {
+                $message->devMode();
+            }
         }
 
         $data[$arn->getKey()] = $arn->toString();
 
-        if ($message instanceof MessageInterface) {
-            $data['Message'] = $this->formatPushMessageAsJson($message);
-            $data['MessageStructure'] = 'json';
-        } else {
-            $data['Message'] = (string) $message;
-            $data['MessageStructure'] = 'string';
-        }
+        $data['Message'] = json_encode($message->getFormattedData());
+        $data['MessageStructure'] = 'json';
 
         try {
             $result = $this->client->publish($data);

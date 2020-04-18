@@ -5,10 +5,12 @@ use Aws\Sns\SnsClient;
 use Mockery\Mock;
 use PHPUnit\Framework\TestCase;
 use SNSPush\Exceptions\InvalidArnException;
+use SNSPush\Exceptions\MismatchedPlatformException;
 use SNSPush\Exceptions\SNSConfigException;
 use SNSPush\Exceptions\SNSSendException;
-use SNSPush\Messages\Message;
+use SNSPush\Messages\IOsMessage;
 use SNSPush\SNSPush;
+use Tests\Helpers;
 
 /**
  * @internal
@@ -126,6 +128,15 @@ class ExceptionTests extends TestCase
         $this->sns->sendPushNotificationToEndpoint($endpoint, $this->getMessage());
     }
 
+    public function testInvalidPatformException()
+    {
+        $this->expectException(MismatchedPlatformException::class);
+
+        $endpoint = 'arn:aws:sns:eu-west-1:01234567890:endpoint/APNS/application-ios/a5825a90-d4fc-3116-8c9f-821d81f745a0';
+
+        $this->sns->sendPushNotificationToEndpoint($endpoint, Helpers::getAndroidMessage());
+    }
+
     /**
      * @dataProvider endpointProvider
      *
@@ -148,12 +159,11 @@ class ExceptionTests extends TestCase
 
     public function getMessage()
     {
-        return (new Message())
+        return (new IOsMessage())
             ->setTitle('Message Title')
             ->setBody('Message body')
             ->setBadge(5)
-            ->setIosSound('Sound.caf')
-            ->setAndroidSound('Sound')
+            ->setSound('Sound')
         ;
     }
 }
