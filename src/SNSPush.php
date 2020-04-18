@@ -238,16 +238,15 @@ class SNSPush
     /**
      * Send push notification to a device endpoint.
      *
-     * @param ARN|EndpointARN|string $arn
-     * @param mixed                  $message
+     * @param ARN|EndpointARN|string $arn the device ARN
      *
      * @throws InvalidArnException
-     * @throws InvalidTypeException
+     * @throws MismatchedPlatformException
      * @throws SNSSendException
      *
      * @return bool|Result
      */
-    public function sendPushNotificationToEndpoint($arn, MessageInterface $message)
+    public function sendPushNotificationToDevice($arn, MessageInterface $message)
     {
         $arn = $arn instanceof EndpointARN ? $arn : EndpointARN::parse($arn);
 
