@@ -42,12 +42,12 @@ class DeviceTest extends TestCase
     /**
      * @dataProvider messageProvider
      */
-    public function testSendMessageToEndpoint(MessageInterface $message, string $endpoint, array $expectedPayload)
+    public function testSendMessageToDevice(MessageInterface $message, string $endpoint, array $expectedPayload)
     {
         $messageId = 'c03c7f56-c583-55f4-b521-2d24537a3337';
         $this->client->expects()->publish($expectedPayload)->andReturns(new Result(['MessageId' => $messageId]));
 
-        $result = $this->sns->sendPushNotificationToEndpoint($endpoint, $message);
+        $result = $this->sns->sendPushNotificationToDevice($endpoint, $message);
 
         $this->assertEquals($messageId, $result->get('MessageId'));
     }
