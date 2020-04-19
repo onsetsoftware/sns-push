@@ -125,7 +125,7 @@ class ExceptionTests extends TestCase
         $endpoint = 'arn:aws:sns:eu-west-1:01234567890:endpoint/APNS/application-ios/a5825a90-d4fc-3116-8c9f-821d81f745a0';
         $this->client->shouldReceive('publish')->andThrow($exception);
 
-        $this->sns->sendPushNotificationToEndpoint($endpoint, $this->getMessage());
+        $this->sns->sendPushNotificationToDevice($endpoint, $this->getMessage());
     }
 
     public function testInvalidPatformException()
@@ -134,7 +134,7 @@ class ExceptionTests extends TestCase
 
         $endpoint = 'arn:aws:sns:eu-west-1:01234567890:endpoint/APNS/application-ios/a5825a90-d4fc-3116-8c9f-821d81f745a0';
 
-        $this->sns->sendPushNotificationToEndpoint($endpoint, Helpers::getAndroidMessage());
+        $this->sns->sendPushNotificationToDevice($endpoint, Helpers::getAndroidMessage());
     }
 
     /**
@@ -146,7 +146,7 @@ class ExceptionTests extends TestCase
     {
         $this->expectException(InvalidArnException::class);
 
-        $this->sns->sendPushNotificationToEndpoint($endpoint, $this->getMessage());
+        $this->sns->sendPushNotificationToDevice($endpoint, $this->getMessage());
     }
 
     public function endpointProvider()
