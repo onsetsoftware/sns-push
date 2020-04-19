@@ -1,5 +1,5 @@
 {
-    "name": "acurrieclark/sns-push",
+    "name": "onsetsoftware/sns-push",
     "type": "library",
     "description": "API Wrapper for Amazon SNS PHP SDK",
     "keywords": [
@@ -8,7 +8,7 @@
         "sns",
         "api"
     ],
-    "homepage": "https://github.com/ReduGroup/sns-push",
+    "homepage": "https://github.com/onsetsoftware/sns-push",
     "license": "MIT",
     "autoload": {
         "psr-4": {
