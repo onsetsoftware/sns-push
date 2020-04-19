@@ -3,7 +3,7 @@ SNS Push (for AWS SNS API)
 
 > This package provides helper methods to send mobile push notifications with the Amazon (AWS) SNS API.
 
-[![Packagist](https://img.shields.io/badge/onsetsoftware-sns--push-brightgreen.svg)](https://packagist.org/packages/onsetsoftware/sns-push)
+[![Packagist](https://img.shields.io/badge/onsetsoftware-sns--push-brightgreen.svg)](https://packagist.org/packages/onsetsoftware/sns-push) [![Build Status](https://travis-ci.org/onsetsoftware/sns-push.svg?branch=master)](https://travis-ci.org/onsetsoftware/sns-push) ![Packagist](https://img.shields.io/packagist/dt/onsetsoftware/sns-push)
 
 SNS Push is a simple SNS SDK wrapper with a collection of methods to aid in interacting with the AWS SNS API. It works directly with Laravel or can be used as a standalone PHP package.
 
