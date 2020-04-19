@@ -1,7 +1,7 @@
 {
     "name": "onsetsoftware/sns-push",
     "type": "library",
-    "description": "API Wrapper for Amazon SNS PHP SDK",
+    "description": "Platform agnostic API Wrapper for Amazon SNS",
     "keywords": [
         "amazon",
         "aws",
