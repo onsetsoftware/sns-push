@@ -1,19 +1,23 @@
 <?php
 
-use Aws\Sns\SnsClient;
 use Aws\Sns\Exception\SnsException;
+use Aws\Sns\SnsClient;
 use Mockery\Mock;
 use PHPUnit\Framework\TestCase;
-use SNSPush\SNSPush;
-use SNSPush\Exceptions\SNSSendException;
-use SNSPush\Exceptions\SNSConfigException;
 use SNSPush\Exceptions\InvalidArnException;
-use SNSPush\Exceptions\InvalidTypeException;
-use SNSPush\Messages\Message;
+use SNSPush\Exceptions\MismatchedPlatformException;
+use SNSPush\Exceptions\SNSConfigException;
+use SNSPush\Exceptions\SNSSendException;
+use SNSPush\Messages\IOsMessage;
+use SNSPush\SNSPush;
+use Tests\Helpers;
 
+/**
+ * @internal
+ * @coversNothing
+ */
 class ExceptionTests extends TestCase
 {
-
     /**
      * @var Mock;
      */
@@ -24,29 +28,31 @@ class ExceptionTests extends TestCase
      */
     protected $sns;
 
-    public function tearDown()
-    {
-        Mockery::close();
-    }
-
-    public function setUp()
+    protected function setUp(): void
     {
         $config = [
-                    'account_id' => '01234567890',
-                    'access_key' => 'ACCESSKEY',
-                    'secret_key' => 'SECRET_KEY',
-                    'platform_applications' => [
-                        'ios' => 'arn:aws:sns:eu-west-1:01234567890:app/APNS/application-ios',
-                        'android' => 'arn:aws:sns:eu-west-1:01234567890:app/GCM/application-android',
-                    ],
-                ];
+            'account_id' => '01234567890',
+            'access_key' => 'ACCESS_KEY',
+            'secret_key' => 'SECRET_KEY',
+            'platform_applications' => [
+                'ios' => 'arn:aws:sns:eu-west-1:01234567890:app/APNS/application-ios',
+                'android' => 'arn:aws:sns:eu-west-1:01234567890:app/GCM/application-android',
+            ],
+        ];
 
         $this->client = Mockery::mock(SnsClient::class);
         $this->sns = new SNSPush($config, $this->client);
     }
 
+    protected function tearDown(): void
+    {
+        Mockery::close();
+    }
+
     /**
      * @dataProvider configProvider
+     *
+     * @param mixed $config
      */
     public function testConfigExceptionThrown($config)
     {
@@ -59,17 +65,17 @@ class ExceptionTests extends TestCase
     {
         return [
             [
-                []
+                [],
             ],
             [
                 [
-                    'access_key' => 'ACCESSKEY',
+                    'access_key' => 'ACCESS_KEY',
                     'secret_key' => 'SECRET_KEY',
                     'platform_applications' => [
                         'ios' => 'arn:aws:sns:eu-west-1:01234567890:app/APNS/application-ios',
                         'android' => 'arn:aws:sns:eu-west-1:01234567890:app/GCM/application-android',
                     ],
-                ]
+                ],
             ],
             [
                 [
@@ -79,36 +85,35 @@ class ExceptionTests extends TestCase
                         'ios' => 'arn:aws:sns:eu-west-1:01234567890:app/APNS/application-ios',
                         'android' => 'arn:aws:sns:eu-west-1:01234567890:app/GCM/application-android',
                     ],
-                ]
+                ],
             ],
             [
                 [
                     'account_id' => '01234567890',
-                    'access_key' => 'ACCESSKEY',
+                    'access_key' => 'ACCESS_KEY',
                     'platform_applications' => [
                         'ios' => 'arn:aws:sns:eu-west-1:01234567890:app/APNS/application-ios',
                         'android' => 'arn:aws:sns:eu-west-1:01234567890:app/GCM/application-android',
                     ],
-                ]
+                ],
             ],
             [
                 [
                     'account_id' => '01234567890',
-                    'access_key' => 'ACCESSKEY',
+                    'access_key' => 'ACCESS_KEY',
                     'secret_key' => 'SECRET_KEY',
                     'platform_applications' => [],
-                ]
+                ],
             ],
             [
                 [
                     'account_id' => '01234567890',
-                    'access_key' => 'ACCESSKEY',
+                    'access_key' => 'ACCESS_KEY',
                     'secret_key' => 'SECRET_KEY',
-                ]
+                ],
             ],
         ];
     }
-
 
     public function testSendException()
     {
@@ -123,8 +128,19 @@ class ExceptionTests extends TestCase
         $this->sns->sendPushNotificationToEndpoint($endpoint, $this->getMessage());
     }
 
+    public function testInvalidPatformException()
+    {
+        $this->expectException(MismatchedPlatformException::class);
+
+        $endpoint = 'arn:aws:sns:eu-west-1:01234567890:endpoint/APNS/application-ios/a5825a90-d4fc-3116-8c9f-821d81f745a0';
+
+        $this->sns->sendPushNotificationToEndpoint($endpoint, Helpers::getAndroidMessage());
+    }
+
     /**
      * @dataProvider endpointProvider
+     *
+     * @param mixed $endpoint
      */
     public function testInvalidTypeException($endpoint)
     {
@@ -141,14 +157,13 @@ class ExceptionTests extends TestCase
         ];
     }
 
-
     public function getMessage()
     {
-        return (new Message())
+        return (new IOsMessage())
             ->setTitle('Message Title')
             ->setBody('Message body')
             ->setBadge(5)
-            ->setIosSound('Sound.caf')
-            ->setAndroidSound('Sound');
+            ->setSound('Sound')
+        ;
     }
 }

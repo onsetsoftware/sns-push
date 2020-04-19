@@ -1,9 +1,9 @@
 SNS Push (for AWS SNS API)
 ======
 
-> This package provides a bunch of helper methods to aid interacting with the Amazon (AWS) SNS API.
+> This package provides helper methods to send mobile push notifications with the Amazon (AWS) SNS API.
 
-[![Packagist](https://img.shields.io/badge/redu-sns--push-brightgreen.svg)](https://packagist.org/packages/redu/sns-push)
+[![Packagist](https://img.shields.io/badge/onsetsoftware-sns--push-brightgreen.svg)](https://packagist.org/packages/onsetsoftware/sns-push)
 
 SNS Push is a simple SNS SDK wrapper with a collection of methods to aid in interacting with the AWS SNS API. It works directly with Laravel or can be used as a standalone PHP package.
 
@@ -11,7 +11,7 @@ SNS Push is a simple SNS SDK wrapper with a collection of methods to aid in inte
 
  Supports  | Version
 :----------|:----------
- PHP       | 7.0
+ PHP       | 7.2
  Platforms | ios/android
 
 # Installing
@@ -19,40 +19,7 @@ SNS Push is a simple SNS SDK wrapper with a collection of methods to aid in inte
 You need to use Composer to install SNS Push into your project:
 
 ```
-composer require redu/sns-push
-```
-
-## Configuring (Laravel)
-
-Now you have to include `SNSPushServiceProvider` in your `config/app.php`:
-
-```php
-<?php
-
-'providers' => [
-    /*
-     * Package Service Providers...
-     */
-    SNSPush\SNSPushServiceProvider::class,
-]
-```
-
-Add 'sns' config keys to the `config/services.php`
-
-```php
-<?php
-
-'sns' => [
-    'account_id' => env('SNS_ACCOUNT_ID', ''),
-    'access_key' => env('SNS_ACCESS_KEY', ''),
-    'secret_key' => env('SNS_SECRET_KEY', ''),
-    'scheme' => env('SNS_SCHEME', 'https'),
-    'region' => env('SNS_REGION', 'eu-west-1'),
-    'platform_applications' => [
-        'ios' => '<application-endpoint-arn>',
-        'android' => '<application-endpoint-arn>'
-    ]
-],
+composer require onsetsoftware/sns-push
 ```
 
 ## Other PHP Framework (not Laravel) Setup
@@ -77,16 +44,55 @@ Also configurable:
 ```php
 <?php
 
+use SNSPush\SNSPush;
+
 $sns = new SNSPush([
     'account_id' => '<aws-account-id>', // Required
     'access_key' => '<aws-iam-user-access-key>', // Required
     'secret_key' => '<aws-iam-user-secret-key>', // Required
     'scheme' => 'http', // Defaults to https
-    'platform_applications' => [ // Required
-        'ios' => '...',
-        'android' => '...'
+    'platform_applications' => [ // application endpoints - Required
+        'ios' => '<application-endpoint-arn>',
+        'android' => '<application-endpoint-arn>'
     ]
 ]);
+```
+
+## Laravel Service Provider
+
+If you are a Laravel user, you can make use of the included service provider. Just add `SNSPushServiceProvider` in your `config/app.php`:
+
+```php
+<?php
+[
+    //...
+    'providers' => [
+        /*
+         * Package Service Providers...
+         */
+        SNSPush\SNSPushServiceProvider::class,
+    ]
+];
+```
+
+Add 'sns' config keys to the `config/services.php`
+
+```php
+<?php
+[
+    //...
+    'sns' => [
+        'account_id' => env('SNS_ACCOUNT_ID', ''),
+        'access_key' => env('SNS_ACCESS_KEY', ''),
+        'secret_key' => env('SNS_SECRET_KEY', ''),
+        'scheme' => env('SNS_SCHEME', 'https'),
+        'region' => env('SNS_REGION', 'eu-west-1'),
+        'platform_applications' => [
+            'ios' => '<application-endpoint-arn>',
+            'android' => '<application-endpoint-arn>'
+        ]
+    ]
+];
 ```
 
 ## Add Device to Application
@@ -95,8 +101,13 @@ Add a device to a platform application (ios/android) by passing the device token
 
 ```php
 <?php
-
-$sns->addDevice('<device-token>, 'ios');
+/**
+ * @param string $token the raw device token
+ * @param string $platform ( ios | android )  
+ *                         
+ * @return ARN the ARN endpoint for the device
+ */
+$sns->addDevice('<device-token>', '<platform-id>');
 ```
 
 ## Remove Device from Application
@@ -115,8 +126,10 @@ Subscribe a device to a Topic by passing the Endpoint Arn and Topic Arn to `subs
 
 ```php
 <?php
-
-$sns->subscribeDeviceToTopic('<endpoint-arn>', '<topic-arn>');
+/**
+ * @return SubscriptionARN
+ */
+$sns->subscribeDeviceToTopic('<device-endpoint-arn>', '<topic-arn>');
 ```
 
 ## Remove Device from Topic
@@ -135,37 +148,39 @@ SNS Push supports sending notifications to both Topic Endpoint or directly to an
 
 ### Messages
 
-Messages can either be submitted as a `string`, or an object which implements `SNSPush\Message\MessageInterface`, such as `SNSPush\Message\Message`. This formats the message appropriately for Android and iOS.
+Messages must implement `SNSPush\Messages\MessageInterface`. There are a number of utility classes which format push notifications correctly for the various endpoint types.
 
 ```php
 <?php
 
-use SNSPush\Message\Message
+use SNSPush\Messages\IOsMessage;
 
-$message = new Message();
+$message = new IOsMessage();
 
 $message->setTitle('Message Title')
         ->setBody('Message body')
         ->setBadge(5)
-        ->setIosSound('sound.caf')
-        ->setAndroidSound('sound')
+        ->setSound('sound.caf')
         ->setPayload(
           [
               'custom-key' => 'value',
           ]
       );
 ```
-or as a string:
+
+#### Phonegap Plugin Push
+The package includes two classes to help format messages for use with the Phonegap Plugin Push Cordova package.
 
 ```php
-<?php
+PhoneGapPluginPushIOSMessage::class;
+PhoneGapPluginPushAndroidMessage::class;
+``` 
 
-$message = "Message body as a string";
-```
+For the full api, please consult the source of each of the message types
 
 ### Send to Device
 
-Simply pass a message as either a `string` or a `SNSPush\Message\MessageInterface` object, along with the endpoint ARN
+Simply pass an object implementing `SNSPush\Messages\MessageInterface`, along with the endpoint ARN. The Endpoint platform must match the message type.
 
 ```php
 <?php
@@ -176,25 +191,32 @@ $sns->sendPushNotificationToDevice(
 );
 ```
 
-The message structure is sent as JSON and will be properly formatted per device from the `MessageInterface` object. This is a requirement if sending to multiple platforms and/or sending a custom payload.
-
 ### Send to Topic
+
+First you should form your `SNSPush\Messages\TopicMessage` by passing an array of the Message objects for the enpoints you need to address. Then pass the `TopicMessage` to the `sendPushNotificationToTopic` method.
 
 ```php
 <?php
 
+$iosMessage = new IOsMessage();
+$androidMessage = new AndroidMessage();
+
+$message = new TopicMessage([$iosMessage, $androidMessage]);
+
+/**
+ * @param TopicARN $arm
+ * @param TopicMessage $message 
+ */
 $sns->send->sendPushNotificationToTopic(
     '<topic-arn>',
     $message
 );
 ```
 
-The message should be configured in the same way as for a device endpoint.
+## Thanks
 
-## To do
-- Support more endpoints
-- Test, test, test... (still in early development, use with caution)
+This package builds on the work done by [ReduGroup](https://github.com/ReduGroup/sns-push).
 
 ## Licence
 
-[MIT License](https://github.com/ReduGroup/sns-push/blob/master/LICENSE.md) © Redu Group Ltd
+[MIT License](https://github.com/ReduGroup/sns-push/blob/master/LICENSE.md) © On Set Software Ltd

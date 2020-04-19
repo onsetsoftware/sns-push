@@ -9,11 +9,11 @@ class Region
     /**
      * Supported AWS regions.
      */
-    const REGION_EU = 'eu'; // Europe
-    const REGION_US = 'us'; // US
-    const REGION_CA = 'ca'; // Canada
-    const REGION_AP = 'ap'; // Asia Pacific
-    const REGION_SA = 'sa'; // South America
+    public const REGION_EU = 'eu'; // Europe
+    public const REGION_US = 'us'; // US
+    public const REGION_CA = 'ca'; // Canada
+    public const REGION_AP = 'ap'; // Asia Pacific
+    public const REGION_SA = 'sa'; // South America
 
     /**
      * List of AWS regions supported by this package.
@@ -21,7 +21,7 @@ class Region
      * @var array
      */
     protected static $regions = [
-        self::REGION_US, self::REGION_EU, self::REGION_AP, self::REGION_CA, self::REGION_SA
+        self::REGION_US, self::REGION_EU, self::REGION_AP, self::REGION_CA, self::REGION_SA,
     ];
 
     /**
@@ -41,7 +41,7 @@ class Region
     /**
      * The number associated with the region.
      *
-     * @var integer
+     * @var int
      */
     protected $number;
 
@@ -52,13 +52,23 @@ class Region
      * @param $area
      * @param $number
      *
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
-    public function __construct($name, $area, $number)
+    public function __construct(string $name, string $area, int $number)
     {
         $this->setName($name);
         $this->setArea($area);
         $this->setNumber($number);
+    }
+
+    /**
+     * Allow object to be converted to string.
+     *
+     * @return string
+     */
+    public function __toString()
+    {
+        return $this->toString();
     }
 
     /**
@@ -74,11 +84,9 @@ class Region
     /**
      * Set the name(area) of the region.
      *
-     * @param mixed $name
-     *
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
-    public function setName($name)
+    public function setName(string $name): void
     {
         if (!in_array($name, self::$regions, true)) {
             throw new InvalidArgumentException('This region is not supported.');
@@ -99,52 +107,34 @@ class Region
 
     /**
      * Set the area of the region.
-     *
-     * @param mixed $area
      */
-    public function setArea($area)
+    public function setArea(string $area): void
     {
         $this->area = $area;
     }
 
     /**
      * Get the number associated with the region.
-     *
-     * @return mixed
      */
-    public function getNumber()
+    public function getNumber(): int
     {
         return $this->number;
     }
 
     /**
      * Set the number for the region.
-     *
-     * @param mixed $number
      */
-    public function setNumber($number)
+    public function setNumber(int $number): void
     {
         $this->number = $number;
     }
 
     /**
      * Get a string of the region.
-     *
-     * @return string
      */
     public function toString(): string
     {
-        return $this->getName() . '-' . $this->getArea() . '-' . $this->getNumber();
-    }
-
-    /**
-     * Allow object to be converted to string.
-     *
-     * @return string
-     */
-    public function __toString()
-    {
-        return $this->toString();
+        return $this->getName().'-'.$this->getArea().'-'.$this->getNumber();
     }
 
     /**
@@ -152,10 +142,11 @@ class Region
      *
      * @param $string
      *
+     * @throws InvalidArgumentException
+     *
      * @return static
-     * @throws \InvalidArgumentException
      */
-    public static function parse($string)
+    public static function parse($string): Region
     {
         $parts = explode('-', $string);
 

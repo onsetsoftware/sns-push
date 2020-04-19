@@ -11,14 +11,14 @@ abstract class ARN
     /**
      * AWS Region.
      *
-     * @var string
+     * @var Region
      */
     protected $region;
 
     /**
      * AWS Account ID.
      *
-     * @var integer
+     * @var int
      */
     protected $accountId;
 
@@ -32,11 +32,11 @@ abstract class ARN
     /**
      * ARN constructor.
      *
-     * @param Region|string             $region
-     * @param                           $accountId
-     * @param                           $target
+     * @param Region|string $region
+     * @param               $accountId
+     * @param               $target
      *
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     public function __construct($region, $accountId, $target)
     {
@@ -54,15 +54,11 @@ abstract class ARN
 
     /**
      * Get the endpoint key for the specified ARN.
-     *
-     * @return string
      */
     abstract public function getKey(): string;
 
     /**
      * Get the AWS region.
-     *
-     * @return Region
      */
     public function getRegion(): Region
     {
@@ -72,9 +68,9 @@ abstract class ARN
     /**
      * Set the AWS region.
      *
-     * @param mixed $region
+     * @param Region|string $region
      *
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     public function setRegion($region)
     {
@@ -100,7 +96,7 @@ abstract class ARN
      *
      * @param mixed $accountId
      *
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     public function setAccountId(string $accountId)
     {
@@ -123,24 +119,21 @@ abstract class ARN
 
     /**
      * Get the full AWS endpoint ARN.
-     *
-     * @return string
      */
     public function toString(): string
     {
-        return 'arn:aws:sns:' . $this->getRegion()->toString() . ':' . $this->getAccountId() . ':' . $this->getTarget();
+        return 'arn:aws:sns:'.$this->getRegion()->toString().':'.$this->getAccountId().':'.$this->getTarget();
     }
 
     /**
      * Parse provided ARN string.
      *
-     * @param $string
+     * @throws InvalidArgumentException
+     * @throws InvalidArnException
      *
      * @return static
-     * @throws \InvalidArgumentException
-     * @throws \SNSPush\Exceptions\InvalidArnException
      */
-    public static function parse($string)
+    public static function parse(string $string)
     {
         $parts = explode(':', $string);
 
@@ -148,7 +141,7 @@ abstract class ARN
             throw new InvalidArnException('This ARN is invalid. Expects 6 parts.');
         }
 
-        foreach([0 => 'arn', 1 => 'aws', 2 => 'sns'] as $index => $expected) {
+        foreach ([0 => 'arn', 1 => 'aws', 2 => 'sns'] as $index => $expected) {
             if ($parts[$index] !== $expected) {
                 throw new InvalidArnException("Required part of arn ({$expected}) is missing.");
             }

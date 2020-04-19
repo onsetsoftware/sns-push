@@ -2,7 +2,6 @@
 
 namespace SNSPush\ARN;
 
-
 class ApplicationARN extends ARN
 {
     /**
@@ -17,8 +16,6 @@ class ApplicationARN extends ARN
 
     /**
      * Get the endpoint key.
-     *
-     * @return string
      */
     public function getKey(): string
     {
