@@ -56,7 +56,7 @@ class AndroidMessage extends Message
         return $this->priority;
     }
 
-    public function setIcon(string $icon): Message
+    public function setIcon(?string $icon): Message
     {
         $this->icon = $icon;
 
@@ -71,7 +71,7 @@ class AndroidMessage extends Message
     /**
      * @return static
      */
-    public function setVibrate(bool $vibrate = true)
+    public function setVibrate(?bool $vibrate = true)
     {
         $this->vibrate = $vibrate;
 
@@ -86,7 +86,7 @@ class AndroidMessage extends Message
     /**
      * @return static
      */
-    public function setChannelId(string $channelId)
+    public function setChannelId(?string $channelId)
     {
         $this->channelId = $channelId;
 

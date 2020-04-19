@@ -54,30 +54,30 @@ abstract class Message implements MessageInterface
         return $this->platformKey;
     }
 
-    public function getTitle(): string
+    public function getTitle(): ?string
     {
-        return $this->title ?? '';
+        return $this->title;
     }
 
     /**
      * @return static
      */
-    public function setTitle(string $title)
+    public function setTitle(?string $title)
     {
         $this->title = $title;
 
         return $this;
     }
 
-    public function getBody(): string
+    public function getBody(): ?string
     {
-        return $this->body ?? '';
+        return $this->body;
     }
 
     /**
      * @return static
      */
-    public function setBody(string $body)
+    public function setBody(?string $body)
     {
         $this->body = $body;
 
@@ -92,22 +92,22 @@ abstract class Message implements MessageInterface
     /**
      * @return static
      */
-    public function setBadge(int $count)
+    public function setBadge(?int $count)
     {
         $this->count = $count;
 
         return $this;
     }
 
-    public function getSound(): string
+    public function getSound(): ?string
     {
-        return $this->sound ?? '';
+        return $this->sound;
     }
 
     /**
      * @return static
      */
-    public function setSound(string $sound)
+    public function setSound(?string $sound)
     {
         $this->sound = $sound;
 
@@ -124,7 +124,7 @@ abstract class Message implements MessageInterface
      *
      * @return static
      */
-    public function setPayload(array $payload)
+    public function setPayload(?array $payload = [])
     {
         $this->payload = $payload;
 
@@ -139,7 +139,7 @@ abstract class Message implements MessageInterface
     /**
      * @return static
      */
-    public function setContentAvailable(bool $contentAvailable = true)
+    public function setContentAvailable(?bool $contentAvailable = true)
     {
         $this->contentAvailable = $contentAvailable;
 
