@@ -225,10 +225,8 @@ class SNSPush
      * @throws InvalidArnException
      * @throws InvalidTypeException
      * @throws SNSSendException
-     *
-     * @return bool|Result
      */
-    public function sendPushNotificationToTopic($arn, TopicMessage $message)
+    public function sendPushNotificationToTopic($arn, TopicMessage $message): ?Result
     {
         $arn = $arn instanceof TopicARN ? $arn : TopicARN::parse($arn);
 
@@ -243,10 +241,8 @@ class SNSPush
      * @throws InvalidArnException
      * @throws MismatchedPlatformException
      * @throws SNSSendException
-     *
-     * @return bool|Result
      */
-    public function sendPushNotificationToDevice($arn, MessageInterface $message)
+    public function sendPushNotificationToDevice($arn, MessageInterface $message): ?Result
     {
         $arn = $arn instanceof EndpointARN ? $arn : EndpointARN::parse($arn);
 
@@ -315,10 +311,8 @@ class SNSPush
      *
      * @throws MismatchedPlatformException
      * @throws SNSSendException
-     *
-     * @return bool|Result
      */
-    private function sendPushNotification(ARN $arn, MessageInterface $message)
+    private function sendPushNotification(ARN $arn, MessageInterface $message): ?Result
     {
         if ($arn instanceof EndpointARN) {
             $platform = explode('/', $arn->getTarget())[1];
@@ -337,9 +331,7 @@ class SNSPush
         $data['MessageStructure'] = 'json';
 
         try {
-            $result = $this->client->publish($data);
-
-            return $result ?? false;
+            return $this->client->publish($data);
         } catch (SnsException $e) {
             throw new SNSSendException($e->getAwsErrorMessage() ?? $e->getMessage(), $e->getCode(), $e);
         } catch (ApiGatewayException $e) {
