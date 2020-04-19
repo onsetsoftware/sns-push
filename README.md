@@ -3,7 +3,7 @@ SNS Push (for AWS SNS API)
 
 > This package provides helper methods to send mobile push notifications with the Amazon (AWS) SNS API.
 
-[![Packagist](https://img.shields.io/badge/redu-sns--push-brightgreen.svg)](https://packagist.org/packages/redu/sns-push)
+[![Packagist](https://img.shields.io/badge/onsetsoftware-sns--push-brightgreen.svg)](https://packagist.org/packages/onsetsoftware/sns-push)
 
 SNS Push is a simple SNS SDK wrapper with a collection of methods to aid in interacting with the AWS SNS API. It works directly with Laravel or can be used as a standalone PHP package.
 
@@ -52,15 +52,15 @@ $sns = new SNSPush([
     'secret_key' => '<aws-iam-user-secret-key>', // Required
     'scheme' => 'http', // Defaults to https
     'platform_applications' => [ // application endpoints - Required
-        'ios' => '...',
-        'android' => '...'
+        'ios' => '<application-endpoint-arn>',
+        'android' => '<application-endpoint-arn>'
     ]
 ]);
 ```
 
 ## Laravel Service Provider
 
-Now you have to include `SNSPushServiceProvider` in your `config/app.php`:
+If you are a Laravel user, you can make use of the included service provider. Just add `SNSPushServiceProvider` in your `config/app.php`:
 
 ```php
 <?php
@@ -148,7 +148,7 @@ SNS Push supports sending notifications to both Topic Endpoint or directly to an
 
 ### Messages
 
-Messages must implement `SNSPush\Messages\MessageInterface`. There are a number of utility classes which format push notifications correctly for the various endpoint types. Eg. 
+Messages must implement `SNSPush\Messages\MessageInterface`. There are a number of utility classes which format push notifications correctly for the various endpoint types.
 
 ```php
 <?php
