@@ -94,13 +94,16 @@ class MessageTest extends TestCase
                     ->setBody('Message body')
                     ->setBadge(5)
                     ->setSound('Diamond')
-                    ->setContentAvailable(1),
+                    ->setContentAvailable(1)
+                    ->setChannelId('default'),
                 [
                     'notification' => [
                         'title' => 'Message Title',
                         'body' => 'Message body',
                         'notification_count' => 5,
                         'sound' => 'Diamond',
+                        'channel_id' => 'default',
+                        'android_channel_id' => 'default',
                     ],
                 ],
             ],

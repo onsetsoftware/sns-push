@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace SNSPush\Messages;
 
-use SNSPush\Exceptions\InvalidTypeException;
 use function array_key_exists;
 use function implode;
+use SNSPush\Exceptions\InvalidTypeException;
 
 class AndroidMessage extends Message
 {
@@ -114,6 +114,7 @@ class AndroidMessage extends Message
                     'default_vibrate_timings' => $this->getVibrate(),
                     'icon' => $this->getIcon(),
                     'channel_id' => $this->getChannelId(),
+                    'android_channel_id' => $this->getChannelId(),
                 ],
                 'data' => $this->getPayload(),
             ]
